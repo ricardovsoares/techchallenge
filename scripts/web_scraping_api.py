@@ -1,10 +1,24 @@
+from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from typing import Optional, Dict
+import uvicorn
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import uuid
+import threading
+from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 import time
-from utils.gerar_aquivo import salvar_em_excel
+from utils.gerar_aquivo import salvar_em_excel, salvar_em_csv
+from utils.configs import settings
+from models.scraping_model import ConfiguracaoScraper, RespostaExecucao
+
+from utils.estado import atualizar_tarefa, obter_tarefa
 
 
 class WebScraperComPaginacao:
@@ -377,63 +391,83 @@ class WebScraperComPaginacao:
         self.driver.quit()
 
 
-# === USADO NOS TESTES DE CONTRUÇÃO ===
-if __name__ == "__main__":
-    # Configuração
-    URL_INICIAL = "https://books.toscrape.com/index.html"
-    SECTION_SELECTOR = "section"  # Seletor da seção onde stão a linhas dos produtos
+executor = ThreadPoolExecutor(max_workers=3)
 
-    # Selertor LI para capturar os produtos
-    LI_SELECTOR = "li.col-xs-6.col-sm-4.col-md-3.col-lg-3"
 
-    # Seletor de próxima página
-    NEXT_PAGE_SELECTOR = "ul.pager li.next a"
-
-    # Criar instância do scraper
-    scraper = WebScraperComPaginacao()
-
+# FUNÇÃO PARA EXECUTAR SCRAPER EM BACKGROUND
+def executar_scraper_background(
+    tarefa_id: str,
+    config: ConfiguracaoScraper
+):
+    """Executa o scraper em thread separada"""
     try:
-        # Processa todas as páginas
-        resultados = scraper.processar_todas_paginas(
-            URL_INICIAL,
-            SECTION_SELECTOR,
-            LI_SELECTOR,
-            NEXT_PAGE_SELECTOR,
-            max_paginas=None  # None = todas
+        atualizar_tarefa(
+            tarefa_id,
+            status="em_progresso",
+            mensagem="Iniciando scraper...",
+            progresso=5
         )
 
-        # Exibe resumo dos resultados
         print(f"\n{'='*70}")
-        print(f"🎉 RESUMO FINAL")
-        print(f"{'='*70}")
-        print(f"Total de produtos processados: {len(resultados)}")
+        print(f"🚀 EXECUTANDO TAREFA {tarefa_id}")
         print(f"{'='*70}\n")
+        scraper = WebScraperComPaginacao(driver_path=config.driver_path)
 
-        # # Exibe os primeiros 5 produtos
-        # for idx, resultado in enumerate(resultados, 1):
-        #     print(f"{idx}. {resultado['titulo']}")
-        #     print(f"   URL: {resultado['url']}")
-        #     if resultado['preco']:
-        #         print(f"   Preço: {resultado['preco']}\n")
-        #         if resultado['descricao']:
-        #             print(f"   Descrição: {resultado['descricao']}\n")
+        try:
+            resultados = scraper.processar_todas_paginas(
+                url_inicial=config.url_inicial,
+                section_selector=config.section_selector,
+                li_selector=config.li_selector,
+                next_page_selector=config.next_page_selector,
+                max_paginas=config.max_paginas
+            )
 
-        if resultados:
-            print("\n" + "="*70)
-            print("💾 SALVANDO DADOS EM ARQUIVO...")
-            print("="*70)
+            # Salva em Excel se solicitado
+            if config.salvar_excel and resultados:
+                salvar_em_excel(
+                    resultados,
+                    caminho_pasta=settings.DIR_BASE,
+                    nome_arquivo=settings.BASE,
+                    auto_versionar=False
+                )
+            else:
+                salvar_em_csv(
+                    resultados,
+                    caminho_pasta=settings.DIR_BASE,
+                    nome_arquivo=settings.BASE,
+                    auto_versionar=False
+                )
 
-            # Grava os dados em Excel
-            salvar_em_excel(resultados, caminho_pasta="dados",
-                            nome_arquivo="catalogo_de_livros.xlsx", auto_versionar=False)
+            atualizar_tarefa(
+                tarefa_id,
+                status="concluido",
+                progresso=100,
+                mensagem=f"✓ Scraping concluído! {len(resultados)} produtos coletados.",
+                resultados=resultados,
+                erro=None,
+                timestamp_conclusao=datetime.now().isoformat()
+            )
 
-        print("\n✓ Processo concluído com sucesso.")
+            print(f"\n{'='*70}")
+            print(f"✅ TAREFA {tarefa_id} CONCLUÍDA")
+            print(f"📦 Total de produtos: {len(resultados)}")
+            print(f"{'='*70}\n")
 
-    except KeyboardInterrupt:
-        print("\n\n⚠ Execução interrompida pelo usuário.")
+        finally:
+            scraper.fechar()
 
     except Exception as e:
-        print(f"\nErro durante execução: {e}")
+        print(f"\n{'='*70}")
+        print(f"❌ ERRO NA TAREFA {tarefa_id}")
+        print(f"Erro: {str(e)}")
+        print(f"{'='*70}\n")
 
-    finally:
-        scraper.fechar()
+        atualizar_tarefa(
+            tarefa_id,
+            status="erro",
+            progresso=0,
+            mensagem=f"Erro: {str(e)}",
+            resultados=None,
+            erro=str(e),
+            timestamp_conclusao=datetime.now().isoformat()
+        )
