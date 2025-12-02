@@ -1,4 +1,3 @@
-# estado.py
 """
 Arquivo centralizado para estado compartilhado entre módulos.
 Evita problemas de importação circular.

@@ -452,7 +452,3 @@ async def get_book_by_id(book_id: int):
     book_data = df[df['id'] == book_id].iloc[0].to_dict()
 
     return book_data
-
-
-# A Light in the Attic
-# Poetry

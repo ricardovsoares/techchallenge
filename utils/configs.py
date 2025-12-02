@@ -1,6 +1,6 @@
 from typing import List, ClassVar
 from pydantic_settings import BaseSettings
-# from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declarative_base
 
 
 class Settings(BaseSettings):
@@ -10,8 +10,9 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DIR_BASE: str = "dados/"
     BASE: str = "catalogo_livros.csv"
-    # DB_URL: str = "postgresql+asyncpg://postgres:134679@localhost:5432/livros"
-    # DBBaseModel: ClassVar = declarative_base()
+
+    DB_URL: str = "postgresql+asyncpg://postgres:134679@localhost:5432/catalogo_livros"
+    DBBaseModel: ClassVar = declarative_base()
 
     JWT_SECRET: str = ""
     """
