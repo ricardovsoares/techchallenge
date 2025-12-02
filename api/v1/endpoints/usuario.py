@@ -48,18 +48,18 @@ async def get_usuarios(db: AsyncSession = Depends(get_session)):
         return usuarios
 
 
-# # GET Usuario e seus artigos
-# @router_usuario.get('/{usuario_id}', response_model=UsuarioSchemaArtigos, status_code=status.HTTP_200_OK)
-# async def get_usuario(usuario_id: int, db: AsyncSession = Depends(get_session)):
-#     async with db as session:
-#         query = select(UsuarioModel).filter(UsuarioModel.id == usuario_id)
-#         result = await session.execute(query)
-#         usuario: UsuarioSchemaArtigos = result.scalars().unique().one_or_none()
-#         if usuario:
-#             return usuario
-#         else:
-#             raise HTTPException(detail='Usuário não encontrado.',
-#                                 status_code=status.HTTP_404_NOT_FOUND)
+# GET Usuario e seus artigos
+@router_usuario.get('/{usuario_id}', response_model=UsuarioSchemaBase, status_code=status.HTTP_200_OK)
+async def get_usuario(usuario_id: int, db: AsyncSession = Depends(get_session)):
+    async with db as session:
+        query = select(UsuarioModel).filter(UsuarioModel.id == usuario_id)
+        result = await session.execute(query)
+        usuario: UsuarioSchemaBase = result.scalars().unique().one_or_none()
+        if usuario:
+            return usuario
+        else:
+            raise HTTPException(detail='Usuário não encontrado.',
+                                status_code=status.HTTP_404_NOT_FOUND)
 
 
 # PUT Usuario

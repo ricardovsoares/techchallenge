@@ -12,6 +12,3 @@ class UsuarioModel(settings.DBBaseModel):
     email: str = Column(String(256), nullable=False, unique=True)
     senha: str = Column(String(256), nullable=False)
     eh_admin: bool = Column(Boolean, default=False)
-
-    artigos = relationship(
-        "ArtigoModel", cascade="all, delete-orphan", back_populates="autor", uselist=True, lazy="joined")
