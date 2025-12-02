@@ -6,6 +6,8 @@ dist/
 dados/
 wheels/
 *.egg-info
+debug_scraper.py
+debug_load_data_book.py
 
 # Virtual environments
 .venv

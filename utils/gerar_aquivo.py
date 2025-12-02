@@ -99,18 +99,18 @@ def salvar_em_excel(resultados, caminho_pasta="dados_exportados", nome_arquivo="
 
         # Renomeia as colunas com nomes mais legíveis
         df = df.rename(columns={
-            'url': 'URL',
-            'titulo': 'Titulo',
-            'descricao': 'Descrição',
-            'preco': 'Preço',
-            'rating': 'Rating',
-            'disponibilidade': 'Disponibilidade',
-            'categoria': 'Categoria',
-            'imagem_url': 'Imagem'
+            'url': 'url',
+            'titulo': 'titulo',
+            'descricao': 'descricao',
+            'preco': 'preco',
+            'rating': 'rating',
+            'disponibilidade': 'disponibilidade',
+            'categoria': 'categoria',
+            'imagem_url': 'imagem'
         })
 
         # Adiciona coluna de índice
-        df.insert(0, 'ID', range(1, len(df) + 1))
+        df.insert(0, 'id', range(1, len(df) + 1))
 
         # Cria o writer do Excel
         with pd.ExcelWriter(caminho_completo, engine='openpyxl') as writer:
@@ -212,19 +212,20 @@ def salvar_em_csv(resultados, caminho_pasta="dados_exportados", nome_arquivo="pr
         df = pd.DataFrame(resultados)
         df = df[['url', 'titulo', 'descricao', 'preco', 'rating',
                  'disponibilidade', 'categoria', 'imagem_url']]
+
         df = df.rename(columns={
-            'url': 'URL',
-            'titulo': 'Titulo',
-            'descricao': 'Descrição',
-            'preco': 'Preço',
-            'rating': 'Rating',
-            'disponibilidade': 'Disponibilidade',
-            'categoria': 'Categoria',
-            'imagem_url': 'Imagem'
+            'url': 'url',
+            'titulo': 'titulo',
+            'descricao': 'descricao',
+            'preco': 'preco',
+            'rating': 'rating',
+            'disponibilidade': 'disponibilidade',
+            'categoria': 'categoria',
+            'imagem_url': 'imagem'
         })
 
-        df.insert(0, 'ID', range(1, len(df) + 1))
-        df.to_csv(caminho_completo, index=False, encoding='utf-8-sig')
+        df.insert(0, 'id', range(1, len(df) + 1))
+        df.to_csv(caminho_completo, index=False, encoding='utf-8')
 
         print(f"\n✓ Arquivo CSV salvo com sucesso")
         print(f"  Caminho: {caminho_completo}")

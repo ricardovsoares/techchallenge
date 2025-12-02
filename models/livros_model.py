@@ -3,41 +3,41 @@ from pydantic import BaseModel, Field
 
 class Book(BaseModel):
     """
-    Pydantic model for a book.
+    Modelo Pydantic para livros
     """
     id: int = Field(..., description="Identificador")
-    title: str = Field(..., description="Título")
-    price: float = Field(..., description="Preço")
+    titulo: str = Field(..., description="Título")
+    preco: float = Field(..., description="Preço")
     rating: int = Field(..., description="Rating do Livro (1-5)")
-    availability: int = Field(...,
-                              description="Marcação de Estoque")
-    category: str = Field(..., description="Categoria do Livro")
-    image_url: str = Field(..., description="URL da Capa do Livro")
+    disponibilidade: int = Field(...,
+                                 description="Marcação de Estoque")
+    categoria: str = Field(..., description="Categoria do Livro")
+    imagem: str = Field(..., description="URL da Capa do Livro")
 
 
 class Category(BaseModel):
     """
-    Pydantic model for a book category.
+    Modelo Pydantic para categorias de livros
     """
     name: str = Field(..., description="Categoria do Livro")
 
 
 class HealthStatus(BaseModel):
     """
-    Pydantic model for the API health status.
+    Modelo Pydantic para Health Status da API
     """
-    status: str = Field(..., description="Current status of the API")
-    message: str = Field(..., description="Additional health message")
+    status: str = Field(..., description="Health Status da API")
+    message: str = Field(..., description="Mensagem adicional")
 
 
 class Statistics(BaseModel):
     """
-    Pydantic model for general book statistics.
+    Nodelo Pydantic para estatísticas gerais da base de livros
     """
-    total_books: int
-    total_categories: int
-    average_price: float
-    min_price: float
-    max_price: float
-    average_rating: float
-    category_distribution: dict[str, int]
+    total_livros: int
+    total_categorias: int
+    media_precos: float
+    preco_minimo: float
+    preco_maximo: float
+    media_avaliacoes: float
+    distribuicao_das_categorias: dict[str, int]
