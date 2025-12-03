@@ -19,6 +19,11 @@ class UsuarioSchemaCreate(UsuarioSchemaBase):
     senha: str
 
 
+class UsuarioSchemaAdmin(UsuarioSchemaBase):
+    id: int
+    is_admin: bool
+
+
 class UsuarioSchemaUpdate(UsuarioSchemaBase):
     nome: Optional[str] = None
     sobrenome: Optional[str] = None

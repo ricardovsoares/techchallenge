@@ -1,4 +1,4 @@
-from typing import List, Optional, Any
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.security import OAuth2PasswordRequestForm
@@ -13,6 +13,7 @@ from schema.usuario_schema import UsuarioSchemaBase, UsuarioSchemaCreate, Usuari
 from utils.deps import get_session, get_usuario_atual
 from utils.security import gerar_hash_senha, verificar_senha
 from utils.auth import criar_token_acesso, autenticar_usuario
+from utils.auth import verificar_admin, TokenData
 
 router_usuario = APIRouter()
 
@@ -89,7 +90,7 @@ async def put_usuario(usuario_id: int, usuario: UsuarioSchemaUpdate, db: AsyncSe
 
 # DELETE Deletar usuário
 @router_usuario.delete('/{usuario_id}', status_code=status.HTTP_204_NO_CONTENT)
-async def delete_usuario(usuario_id: int, db: AsyncSession = Depends(get_session)):
+async def delete_usuario(usuario_id: int, db: AsyncSession = Depends(get_session), usuario_atual: TokenData = Depends(verificar_admin)):
     async with db as session:
         query = select(UsuarioModel).filter(UsuarioModel.id == usuario_id)
         result = await session.execute(query)
@@ -106,11 +107,10 @@ async def delete_usuario(usuario_id: int, db: AsyncSession = Depends(get_session
 # POST Login
 @router_usuario.post('/login')
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_session)):
-    print("username", form_data.username)
-    print("passwoad", form_data.password)
     usuario = await autenticar_usuario(email=form_data.username, senha=form_data.password, db=db)
     if not usuario:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Email ou Senha incorretos.')
-    token_acesso = criar_token_acesso(sub=usuario.id)
+    token_acesso = criar_token_acesso(
+        sub=usuario.id, is_admin=usuario.eh_admin)
     return JSONResponse(content={"access_token": token_acesso, "token_type": "bearer"})

@@ -28,11 +28,15 @@ from utils.estado import (
     obter_todas_tarefas,
     limpar_concluidas
 )
+from utils.auth import verifica_token, TokenData
+from fastapi import Depends
+
+
 router_scraping = APIRouter()
 
 
-@router_scraping.post("/iniciar", response_model=RespostaExecucao)
-async def iniciar_scraper(config: ConfiguracaoScraper, background_tasks: BackgroundTasks):
+@router_scraping.post("/iniciar", response_model=RespostaExecucao, dependencies=[Depends(verifica_token)], summary="Execução do scraper (Requer JWT Token)")
+async def iniciar_scraper(config: ConfiguracaoScraper, background_tasks: BackgroundTasks, usuario_atual: TokenData = Depends(verifica_token)):
     """
     Inicia uma nova tarefa de scraping.
 

@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     DB_URL: str = "postgresql+asyncpg://postgres:134679@localhost:5432/catalogo_livros"
     DBBaseModel: ClassVar = declarative_base()
 
-    JWT_SECRET: str = ""
+    JWT_SECRET: str = "_PjYCgkedWPSDbNYFkSbS7lQ6hR1ApgXccZFQ2l83Bs"
     """
         Chave secreta para assinar os tokens JWT.
         Pode ser gerada usando o comando:
