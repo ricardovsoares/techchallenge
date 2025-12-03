@@ -10,4 +10,4 @@ api_router.include_router(livro.router_livros,
                           prefix='/books', tags=['Books'])
 
 api_router.include_router(
-    usuario.router_usuario, prefix='/usuarios', tags=['Usuario'])
+    usuario.router_usuario, prefix='/users', tags=['Users'])

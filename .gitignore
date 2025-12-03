@@ -4,6 +4,7 @@ __pycache__/
 build/
 dist/
 dados/
+logs/
 wheels/
 *.egg-info
 debug_scraper.py

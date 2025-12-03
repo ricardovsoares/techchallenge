@@ -1,12 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from typing import Optional, Dict
-import uvicorn
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
-import uuid
-import threading
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -19,6 +11,11 @@ from utils.configs import settings
 from models.scraping_model import ConfiguracaoScraper, RespostaExecucao
 
 from utils.estado import atualizar_tarefa, obter_tarefa
+from dataclasses import dataclass
+from utils.logger import configura_logger
+
+
+logger = configura_logger(__name__, "scraper_service.log")
 
 
 class WebScraperComPaginacao:
@@ -308,7 +305,8 @@ class WebScraperComPaginacao:
         section_selector,
         li_selector,
         next_page_selector,
-        max_paginas=None
+        max_paginas=None,
+        controller=None
     ):
         """
         Processa todas as páginas: extrai 20 produtos por página e navega.
@@ -329,6 +327,11 @@ class WebScraperComPaginacao:
         produtos_total = 0
 
         while url_atual and (max_paginas is None or pagina_numero <= max_paginas):
+
+            if controller.is_stop_requested():
+                logger.warning("Parada solicitada durante processamento")
+                break
+
             print(f"\n{'='*70}")
             print(f"PROCESSANDO PÁGINA {pagina_numero}")
             print(f"{'='*70}")

@@ -8,10 +8,9 @@ from utils.configs import settings
 
 from models.livros_model import Book, Category, HealthStatus, Statistics
 
+from utils.logger import configura_logger
 
-# Configuraçção do módulo de logs
-logger = logging.getLogger(__name__)
-
+logger = configura_logger(__name__, "livros.log")
 router_livros = APIRouter()
 
 DATA_FILE = os.path.join(settings.DIR_BASE, settings.BASE)
@@ -47,7 +46,27 @@ except RuntimeError:
         "O aplicativo não pode ser iniciado sem os dados do livro.")
 
 
-@router_livros.get("/health", response_model=HealthStatus, summary="Health Check")
+@router_livros.get("/health", response_model=HealthStatus, summary="🏥 Verificação de Saúde da API de Livros",
+                   description="Verifica se a API de livros está operacional e respondendo.",
+                   tags=["Books"],
+                   responses={
+                       200: {
+                           "description": "API operacional",
+                           "content": {
+                               "application/json": {
+                                   "example": {"status": "ok", "message": "API de livros está funcionando!"}
+                               }
+                           }
+                       },
+                       500: {
+                           "description": "Erro interno do servidor",
+                           "content": {
+                               "application/json": {
+                                   "example": {"detail": "Erro interno ao verificar a saúde da API"}
+                               }
+                           }
+                       }
+                   })
 async def health_check():
     """
     Avalia a saúde da API.
@@ -63,7 +82,32 @@ async def health_check():
                             detail="Erro interno durante health check")
 
 
-@router_livros.get("/", response_model=List[Book], summary="Lista todos os livros")
+@router_livros.get("/", response_model=List[Book], summary="📋 Listar todos os livros",
+                   description="Retorna uma lista de todos os livros disponíveis, com opções de paginação.",
+                   tags=["Books"],
+                   responses={
+                       200: {
+                           "description": "Lista de livros retornada com sucesso",
+                           "content": {
+                               "application/json": {
+                                   "example": [
+                                       {"id": 1, "titulo": "A Arte da Guerra", "autor": "Sun Tzu",
+                                        "categoria": "Estratégia", "preco": 25.50, "avaliacao": 4.8},
+                                       {"id": 2, "titulo": "O Pequeno Príncipe", "autor": "Antoine de Saint-Exupéry",
+                                        "categoria": "Literatura Infantil", "preco": 15.00, "avaliacao": 4.9}
+                                   ]
+                               }
+                           }
+                       },
+    500: {
+        "description": "Erro interno do servidor",
+        "content": {
+            "application/json": {
+                "example": {"detail": "Erro ao listar livros"}
+            }
+        }
+                       }
+})
 async def listar_livros(
     limite: int = Query(100, ge=1, le=1000,
                         description="Número de livros"),
@@ -76,12 +120,44 @@ async def listar_livros(
     paginated_books = df.iloc[paginacao:paginacao + limite]
 
     if paginated_books.empty and paginacao > 0:
+        logger.warning("Não foram encontrados mais livros.")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="Não foram encontrados mais livros.")
     return paginated_books.to_dict(orient="records")
 
 
-@router_livros.get("/search", response_model=List[Book], summary="Buscar Livros por Titulo ou Categoria")
+@router_livros.get("/search", response_model=List[Book],
+                   summary="🔍 Buscar livros por título ou categoria",
+                   description="Permite buscar livros utilizando um termo de pesquisa no título ou na categoria.",
+                   tags=["Books"],
+                   responses={
+                       200: {
+                           "description": "Livros encontrados com sucesso",
+                           "content": {
+                               "application/json": {
+                                   "example": [
+                                       {"id": 3, "titulo": "1984", "autor": "George Orwell",
+                                        "categoria": "Distopia", "preco": 30.00, "avaliacao": 4.7},
+                                       {"id": 7, "titulo": "A Revolução dos Bichos", "autor": "George Orwell",
+                                        "categoria": "Distopia", "preco": 20.00, "avaliacao": 4.7}
+                                   ]
+                               }
+                           }
+                       },    400: {
+                           "description": "Parâmetros de busca inválidos",
+                           "content": {
+                               "application/json": {
+                                   "example": {"detail": "Termo de busca deve ter no mínimo 2 caracteres."}
+                               }
+                           }
+                       },    500: {
+                           "description": "Erro interno do servidor",
+                           "content": {
+                               "application/json": {
+                                   "example": {"detail": "Erro ao buscar livros"}
+                               }
+                           }
+                       }})
 async def search_books(
     title: Optional[str] = Query(None, min_length=1,
                                  description="Pesquisa por título"),
@@ -153,7 +229,25 @@ async def search_books(
     return results_df.to_dict(orient="records")
 
 
-@router_livros.get("/categories", response_model=List[Category], summary="Retorna todas as categorias")
+@router_livros.get("/categories", response_model=List[Category], summary="📋 Listar todas as categorias de livros",
+                   description="Retorna uma lista de todas as categorias únicas de livros disponíveis no sistema.",
+                   tags=["Books"],
+                   responses={
+                       200: {
+                           "description": "Lista de categorias retornada com sucesso",
+                           "content": {
+                               "application/json": {
+                                   "example": ["Estratégia", "Literatura Infantil", "Distopia", "Clássico", "História", "Programação", "Fantasia"]
+                               }
+                           }
+                       }, 500: {
+                           "description": "Erro interno do servidor",
+                           "content": {
+                               "application/json": {
+                                   "example": {"detail": "Erro ao listar categorias"}
+                               }
+                           }
+                       }})
 async def get_all_categories():
     """
     Buscar livros por categoria.
@@ -163,7 +257,31 @@ async def get_all_categories():
     return [{"name": cat} for cat in unique_categories]
 
 
-@router_livros.get("/insights/statistics", response_model=Statistics, summary="Estatísticas gerais da base de livros")
+@router_livros.get("/insights/statistics", response_model=Statistics, summary="📊 Obter estatísticas gerais dos livros",
+                   description="Retorna estatísticas agregadas sobre os livros, como total de livros, preço médio e avaliação média.",
+                   tags=["Books"],
+                   responses={
+                       200: {
+                           "description": "Estatísticas retornadas com sucesso",
+                           "content": {
+                               "application/json": {
+                                   "example": {
+                                       "total_livros": 10,
+                                       "preco_medio": 39.45,
+                                       "avaliacao_media": 4.61
+                                   }
+                               }
+                           }
+                       },
+                       500: {
+                           "description": "Erro interno do servidor",
+                           "content": {
+                               "application/json": {
+                                   "example": {"detail": "Erro ao obter estatísticas"}
+                               }
+                           }
+                       }
+                   })
 async def get_book_statistics():
     """
  Fornece estatísticas gerais e agregadas sobre o conjunto de dados de livros.
@@ -213,7 +331,7 @@ async def get_book_statistics():
     ```
 
     **Exemplos de Uso:**
-    - `GET /api/v1/books/insights/statistics`
+    - `GET /api/v1/livros/insights/statistics`
       → Retorna todas as estatísticas da base
 
     **Validações e Tratamentos:**
@@ -238,6 +356,7 @@ async def get_book_statistics():
     """
     df = load_books_data()
     if df.empty:
+        logger.warning("Base de livros não encontrada.")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="Base de livros não encontrada.")
 
@@ -260,7 +379,31 @@ async def get_book_statistics():
     )
 
 
-@router_livros.get("/insights/top-rated", response_model=List[Book], summary="Top Avaliações")
+@router_livros.get("/insights/top-rated", response_model=List[Book], summary="📋 Listar livros mais bem avaliados",
+                   description="Retorna uma lista dos livros com as maiores avaliações.",
+                   tags=["Books"],
+                   responses={
+                       200: {
+                           "description": "Livros mais bem avaliados retornados com sucesso",
+                           "content": {
+                               "application/json": {
+                                   "example": [
+                                       {"id": 8, "titulo": "O Senhor dos Anéis", "autor": "J.R.R. Tolkien",
+                                        "categoria": "Fantasia", "preco": 70.00, "avaliacao": 5.0},
+                                       {"id": 2, "titulo": "O Pequeno Príncipe", "autor": "Antoine de Saint-Exupéry",
+                                        "categoria": "Literatura Infantil", "preco": 15.00, "avaliacao": 4.9}
+                                   ]
+                               }
+                           }
+                       },
+                       500: {
+                           "description": "Erro interno do servidor",
+                           "content": {
+                               "application/json": {
+                                   "example": {"detail": "Erro ao listar livros mais bem avaliados"}
+                               }
+                           }
+                       }})
 async def get_top_rated_books(
     limit: int = Query(
         5, ge=1, le=20, description="Os livros mais bem avaliados")
@@ -308,12 +451,45 @@ async def get_top_rated_books(
     df = load_books_data()
     top_books_df = df.sort_values(by='rating', ascending=False).head(limit)
     if top_books_df.empty:
+        logger.warning("Nenhum livro bem avaliado foi encontrado.")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="No top-rated books found.")
+                            detail="Nenhum livro bem avaliado foi encontrado.")
     return top_books_df.to_dict(orient="records")
 
 
-@router_livros.get("/insights/price-range", response_model=List[Book], summary="Retorna uma listagem de livros de acordo com a faixa de preços.")
+@router_livros.get("/insights/price-range", response_model=List[Book], summary="🔍 Filtrar livros por faixa de preço",
+                   description="Retorna livros que se encaixam em uma faixa de preço especificada.",
+                   tags=["Books"],
+                   responses={
+                       200: {
+                           "description": "Livros na faixa de preço retornados com sucesso",
+                           "content": {
+                               "application/json": {
+                                   "example": [
+                                       {"id": 1, "titulo": "A Arte da Guerra", "autor": "Sun Tzu",
+                                        "categoria": "Estratégia", "preco": 25.50, "avaliacao": 4.8},
+                                       {"id": 3, "titulo": "1984", "autor": "George Orwell",
+                                        "categoria": "Distopia", "preco": 30.00, "avaliacao": 4.7}
+                                   ]
+                               }
+                           }
+                       },
+                       400: {
+                           "description": "Faixa de preço inválida",
+                           "content": {
+                               "application/json": {
+                                   "example": {"detail": "Preço mínimo não pode ser maior que o preço máximo."}
+                               }
+                           }
+                       },
+                       500: {
+                           "description": "Erro interno do servidor",
+                           "content": {
+                               "application/json": {
+                                   "example": {"detail": "Erro ao filtrar livros por preço"}
+                               }
+                           }
+                       }})
 async def get_books_by_price_range(
     min_price: float = Query(
         0.0, ge=0.0, description="Preço mínimo por livro"),
@@ -433,12 +609,52 @@ async def get_books_by_price_range(
     filtered_books_df = df[(df['preco'] >= min_price) &
                            (df['preco'] <= max_price)]
     if filtered_books_df.empty:
+        logger.warning(
+            f"Nenhum livro encontrado na faixa de preço: ${min_price:.2f} - ${max_price:.2f}.")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"No books found in price range ${min_price:.2f} - ${max_price:.2f}.")
+                            detail=f"Nenhum livro encontrado na faixa de preço: ${min_price:.2f} - ${max_price:.2f}.")
     return filtered_books_df.to_dict(orient="records")
 
 
-@router_livros.get("/{book_id}", response_model=Book, summary="BsBusca livros pelo id")
+@router_livros.get("/{book_id}", response_model=Book, summary="🔍 Buscar livro por ID",
+                   description="Recupera os detalhes completos de um livro específico utilizando seu identificador único (ID).",
+                   tags=["Books"],
+                   responses={
+                       200: {
+                           "description": "Livro encontrado e retornado com sucesso.",
+                           "content": {
+                               "application/json": {
+                                   "example": {
+                                       "id": 1,
+                                       "url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html",
+                                       "titulo": "A Light in the Attic",
+                                       "descricao": "It's hard to imagine a world without...",
+                                       "preco": 51.77,
+                                       "rating": 3,
+                                       "disponibilidade": 1,
+                                       "categoria": "Poetry",
+                                       "imagem": "https://books.toscrape.com/media/cache/2c/da/2cdad67c44b002ae7a0c12dd7787fd30.jpg"
+                                   }
+                               }
+                           }
+                       },
+                       404: {
+                           "description": "Livro não encontrado para o ID fornecido.",
+                           "content": {
+                               "application/json": {
+                                   "example": {"detail": "O livro com ID 999 não foi encontrado."}
+                               }
+                           }
+                       },
+                       500: {
+                           "description": "Erro interno do servidor ao processar a requisição.",
+                           "content": {
+                               "application/json": {
+                                   "example": {"detail": "Erro interno ao buscar o livro."}
+                               }
+                           }
+                       },
+                   },)
 async def get_book_by_id(book_id: int):
     """
     Retorna os dados de um livro pelo ID.

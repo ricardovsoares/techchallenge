@@ -19,7 +19,7 @@ def criar_tarefa(tarefa_id: str) -> None:
     with tarefas_lock:
         tarefas_estado[tarefa_id] = {
             "status": "aguardando",
-            "progresso": 0,
+            # "progresso": 0,
             "mensagem": "Aguardando início da execução...",
             "resultados": None,
             "erro": None,
