@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from api.v1.endpoints import livro, scraping, usuario
+from api.v1.endpoints import livro, scraping, usuario, ml
 
 api_router = APIRouter()
 
@@ -11,3 +11,6 @@ api_router.include_router(livro.router_livros,
 
 api_router.include_router(
     usuario.router_usuario, prefix='/users', tags=['Users'])
+
+api_router.include_router(
+    ml.router_ml, prefix='/ml', tags=['Machine-Learnig'])

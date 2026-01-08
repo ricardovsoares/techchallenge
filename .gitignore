@@ -9,6 +9,10 @@ wheels/
 *.egg-info
 debug_scraper.py
 debug_load_data_book.py
-
+main_bkp.py
+configs_bkp.py
+configs_bkp2.py
+*.pkl
+.env
 # Virtual environments
 .venv
