@@ -14,7 +14,7 @@ from api.v1.api import api_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Estado e recursos inicializados no startup (igual ambiente real)
-    app.state.tarefas_estado = {}  # type: Dict
+    app.state.tarefas_estado = {}
     app.state.tarefas_lock = threading.Lock()
 
     max_workers = int(os.getenv("MAX_WORKERS", "3"))

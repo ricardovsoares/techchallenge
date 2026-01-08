@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Any
 import os
 import logging
 from functools import lru_cache
-from utils.configs import settings
+from utils.configs_bkp import settings
 
 from models.livros_model import Book, Category, HealthStatus, Statistics
 

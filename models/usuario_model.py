@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
-from utils.configs import settings
+from utils.configs_bkp import settings
 
 
 class UsuarioModel(settings.DBBaseModel):

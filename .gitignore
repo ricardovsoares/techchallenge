@@ -14,5 +14,6 @@ configs_bkp.py
 configs_bkp2.py
 *.pkl
 .env
+catalogo_livros.csv
 # Virtual environments
 .venv

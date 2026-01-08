@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from utils.database import Session
 from utils.auth import oauth2_scheme
-from utils.configs import settings
+from utils.configs_bkp import settings
 from models.usuario_model import UsuarioModel
 
 

@@ -1,4 +1,4 @@
-from utils.configs import settings
+from utils.configs_bkp import settings
 from utils.database import engine
 
 

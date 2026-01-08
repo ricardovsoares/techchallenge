@@ -4,7 +4,7 @@ from datetime import datetime
 from selenium.webdriver.support import expected_conditions as EC
 
 
-from utils.configs import settings
+from utils.configs_bkp import settings
 from scripts.web_scraping_api import executar_scraper_background
 from models.scraping_model import ConfiguracaoScraper, RespostaExecucao
 from fastapi.middleware.cors import CORSMiddleware
