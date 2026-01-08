@@ -7,7 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 import time
 from utils.gerar_aquivo import salvar_em_excel, salvar_em_csv
-from utils.configs_bkp import settings
+from utils.configs import settings
 from models.scraping_model import ConfiguracaoScraper, RespostaExecucao
 
 from utils.estado import atualizar_tarefa, obter_tarefa

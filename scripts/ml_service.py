@@ -8,7 +8,7 @@ from datetime import datetime
 import time
 from typing import Dict, List, Any, Optional
 import os
-from utils.configs_bkp import settings
+from utils.configs import settings
 from pathlib import Path
 import json
 import pickle

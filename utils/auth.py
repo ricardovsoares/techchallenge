@@ -10,10 +10,9 @@ from fastapi import Depends, HTTPException, status
 from pydantic import EmailStr
 
 from models.usuario_model import UsuarioModel
-from utils.configs_bkp import settings
+from utils.configs import settings
 from utils.security import verificar_senha
 from pydantic import BaseModel
-from utils.configs_bkp import settings
 import logging
 
 oauth2_scheme = OAuth2PasswordBearer(
