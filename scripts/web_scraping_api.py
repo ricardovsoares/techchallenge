@@ -254,7 +254,7 @@ class WebScraperComPaginacao:
             if not href:
                 return None
 
-            # Se href for relativo e contiver "catalogue", tenta resolver como seu código original fazia
+            # Se href for relativo e contiver "catalogue"
             if not href.startswith("http"):
                 try:
                     base_url = self.driver.current_url.split("/catalogue/")[0]
@@ -264,8 +264,47 @@ class WebScraperComPaginacao:
                     pass
 
             return href
-        except Exception:
+        except Exception as e:
+            print(
+                f"[verificar_proxima_pagina] selector={next_page_selector!r} url={getattr(self.driver,'current_url',None)!r} erro={e!r}")
             return None
+
+    # def verificar_proxima_pagina(self, next_page_selector):
+    #     """
+    #     Verifica se existe botão/link para próxima página.
+
+    #     Args:
+    #         next_page_selector: Seletor para o link da próxima página
+
+    #     Returns:
+    #         URL da próxima página ou None se não existir
+    #     """
+    #     try:
+    #         # Tenta encontrar o elemento de próxima página
+    #         next_button = self.driver.find_element(
+    #             By.CSS_SELECTOR,
+    #             next_page_selector
+    #         )
+
+    #         # Extrai a URL da próxima página
+    #         href = next_button.get_attribute("href")
+
+    #         if href:
+    #             # Converte URL relativa para absoluta se necessário
+    #             if not href.startswith("http"):
+    #                 base_url = self.driver.current_url.split("/catalogue/")[0]
+    #                 href = base_url + "/catalogue/" + \
+    #                     href.replace("catalogue/", "")
+
+    #             print(f"✓ Próxima página encontrada: {href}")
+    #             return href
+
+    #         print("✗ Botão próxima página não tem href válido")
+    #         return None
+
+    #     except:
+    #         print("✗ Não há próxima página (elemento não encontrado)")
+    #         return None
 
     def obter_pagina_atual(self) -> str:
         """
@@ -461,6 +500,8 @@ class WebScraperComPaginacao:
                 print(f"URL: {url_atual}")
 
             self.acessar_pagina(url_atual)
+            # Novo
+            url_listagem = self.driver.current_url
 
             if debug:
                 print("TITLE:", self.driver.title)
@@ -509,7 +550,8 @@ class WebScraperComPaginacao:
                     print()
 
                 time.sleep(0.2)
-
+            # Novo
+            self.acessar_pagina(url_listagem)
             # Próxima página
             url_atual = self.verificar_proxima_pagina(next_page_selector)
             pagina_numero += 1

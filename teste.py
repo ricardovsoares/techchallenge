@@ -22,7 +22,8 @@ if __name__ == "__main__":
     # Configuração - ADAPTE COM SEUS SELETORES REAIS
     URL_INICIAL = "https://books.toscrape.com/index.html"
     SECTION_SELECTOR = "section"      # ou ".produtos" ou "#products"
-    LI_SELECTOR = "li"                       # ou "li.item" ou just "li"
+    # LI_SELECTOR = "li"                       # ou "li.item" ou just "li"
+    LI_SELECTOR = "li.col-xs-6.col-sm-4.col-md-3.col-lg-3"
     # Botão próxima
     NEXT_PAGE_SELECTOR = "ul.pager li.next a"
 
@@ -34,7 +35,7 @@ if __name__ == "__main__":
         section_selector=SECTION_SELECTOR,
         li_selector=LI_SELECTOR,
         next_page_selector=NEXT_PAGE_SELECTOR,
-        max_paginas=1,
+        # max_paginas=None,
         salvar_excel=False
     )
 
@@ -46,9 +47,4 @@ if __name__ == "__main__":
 
     background_tasks: BackgroundTasks = BackgroundTasks()
 
-    # scraper = executar_scraper_background(tarefa_id=tarefa_id, config=config)
-    background_tasks.add_task(
-        executar_scraper_background,
-        tarefa_id,
-        config
-    )
+    craper = executar_scraper_background(tarefa_id=tarefa_id, config=config)

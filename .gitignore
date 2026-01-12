@@ -9,6 +9,7 @@ wheels/
 *.egg-info
 debug_scraper.py
 debug_load_data_book.py
+teste.py
 main_bkp.py
 configs_bkp.py
 configs_bkp2.py
