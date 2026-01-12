@@ -81,7 +81,6 @@ def get_usuario_logado(usuario_logado: UsuarioModel = Depends(get_usuario_atual)
                              "content": {
                                  "application/json": {
                                      "example": {
-                                         "id": 1,
                                          "nome": "João",
                                          "sobrenome": "Silva",
                                          "email": "joao@example.com",
@@ -201,14 +200,15 @@ async def get_usuarios(db: AsyncSession = Depends(get_session)):
     """
     try:
         async with db as session:
-            logger.info("/", "GET")
+            logger.info("%s %s", "/", "GET")
             query = select(UsuarioModel)
             result = await session.execute(query)
             usuarios: List[UsuarioModel] = result.scalars().unique().all()
             logger.debug(f"Total de usuários encontrados: {len(usuarios)}")
             return usuarios
     except Exception as e:
-        logger.error("listagem de usuários", str(e))
+        # logger.error("listagem de usuários: %s", str(e))
+        logger.exception("listagem de usuários")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao listar usuários"

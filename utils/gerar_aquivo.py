@@ -225,7 +225,7 @@ def salvar_em_csv(resultados, caminho_pasta="dados_exportados", nome_arquivo="pr
         })
 
         df.insert(0, 'id', range(1, len(df) + 1))
-        df.to_csv(caminho_completo, index=False, encoding='utf-8')
+        df.to_csv(caminho_completo, index=False, encoding='utf-8', sep=',')
 
         print(f"\n✓ Arquivo CSV salvo com sucesso")
         print(f"  Caminho: {caminho_completo}")
