@@ -3,3 +3,7 @@ services:
     name: app
     env: docker
     autoDeploy: true
+    disks:
+      - name: dados
+        mountPath: /app/dados
+        sizeGB: 1
