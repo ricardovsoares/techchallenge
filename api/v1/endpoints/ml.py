@@ -99,42 +99,7 @@ async def get_training_data(
         0.2, ge=0.1, le=0.5, description="Proporção de teste"),
     current_user: TokenData = Depends(verifica_token)
 ):
-    """
-    Retorna dataset formatado para treinamento.
 
-    **Autenticação**: Requer JWT token válido
-
-    **Query Parameters:**
-    - `limite`: Limitar quantidade de registros
-    - `test_size`: Proporção para teste (padrão: 0.2 = 80/20)
-
-    **Resposta:**
-    - `features`: Lista de arrays com features
-    - `targets`: Labels para classificação
-    - `feature_names`: Nomes das features
-    - `target_name`: Nome do target
-
-    **Exemplo de uso:**
-    ```python
-    import numpy as np
-    from sklearn.ensemble import RandomForestClassifier
-
-    response = requests.get(
-        "http://api.example.com/api/v1/ml/training-data",
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    data = response.json()
-
-    X_train = np.array(data["features_train"])
-    y_train = np.array(data["targets_train"])
-    X_test = np.array(data["features_test"])
-    y_test = np.array(data["targets_test"])
-
-    model = RandomForestClassifier()
-    model.fit(X_train, y_train)
-    score = model.score(X_test, y_test)
-    ```
-    """
     try:
         logger.info(f"📊 Usuário {current_user.sub} obtendo dataset de treino")
 
@@ -301,12 +266,15 @@ async def fazer_predicoes_batch(
         ml_service = get_ml_service()
 
         if ml_service.model is None:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Modelo não disponível"
-            )
+            logger.info("📂 Carregando modelo treinado do arquivo (batch)...")
+            sucesso = ml_service.carregar_modelo()
+            if not sucesso:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Modelo não disponível. Execute o treinamento primeiro."
+                )
 
-        resultado = ml_service.fazer_predicoes_batch(livros=request.livros)
+        resultado = ml_service.fazer_predicoes_batch(request.livros)
 
         return resultado
 
@@ -315,6 +283,8 @@ async def fazer_predicoes_batch(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"❌ Erro no batch: {e}")
         raise HTTPException(
@@ -360,7 +330,7 @@ async def treinar_modelo(
 
         # Salvar modelo
         ml_service.salvar_modelo(
-            "models/modelo_books.pkl", "models/scaler_books.pkl")
+            "models/modelo_books.pkl", "dados/scaler_books.pkl")
 
         logger.info(
             f"✅ Modelo treinado com acurácia {metricas['acuracia']:.2%}")

@@ -6,15 +6,17 @@ dist/
 dados/
 logs/
 wheels/
+schema/ml_schema_bkp.py
 *.egg-info
 debug_scraper.py
 debug_load_data_book.py
-teste.py
 main_bkp.py
 configs_bkp.py
 configs_bkp2.py
 *.pkl
 .env
 catalogo_livros.csv
+scripts/ml_service_bkp.py
+teste_scrapper.py
 # Virtual environments
 .venv

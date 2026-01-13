@@ -1,521 +1,319 @@
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.model_selection import train_test_split
-import joblib
+import os
+import time
 import logging
 from datetime import datetime
-import time
-from typing import Dict, List, Any, Optional
-import os
-from utils.configs import settings
 from pathlib import Path
-import json
-import pickle
+from typing import Any, Dict, List, Optional, Union
+
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+
+from utils.configs import settings
 
 logger = logging.getLogger(__name__)
 
 
 class MLService:
-    """Serviço para operações de ML"""
+    """Serviço para operações de ML (consistente com endpoints FastAPI)."""
 
-    def __init__(self, csv_path: str = settings.DIR_BASE + "/" + settings.BASE):
-        self.csv_path = csv_path
-        self.df = None
-        self.scaler = StandardScaler()
+    def __init__(self, csv_path: str = None):
+        self.csv_path = csv_path or (settings.DIR_BASE + "/" + settings.BASE)
+        self.df: Optional[pd.DataFrame] = None
+        self.scaler: StandardScaler = StandardScaler()
         self.label_encoders: Dict[str, LabelEncoder] = {}
         self.modelo_versao = "v1.0"
-        self.modelo = None
         self.model = None
+        self.modelo_path = Path("dados/modelo_books.pkl")
+        self.scaler_path = Path("dados/scaler_books.pkl")
+        self.allow_default_fallback = True
         self._carregar_dados()
         self._inicializar_encoders()
-        self.modelo_path = Path("models/modelo_treinado.pkl")
-        self.scaler_path = Path("models/scaler.pkl")
-        self.categoria_map = {}  # Dicionário vazio inicialmente
-        self.categoria_map_path = Path("models")
-        self.categoria_map = {
-            "Poetry": 0,
-            "Historical Fiction": 1,
-            "Fiction": 2,
-            "Mystery": 3,
-            "History": 4,
-            "Young Adult": 5,
-            "Business": 6,
-            "Default": 7,
-            "Sequential Art": 8,
-            "Music": 9,
-            "Science Fiction": 10,
-            "Politics": 11,
-            "Travel": 12
-        }
+
+    def _minmax(self, v: float, s: pd.Series) -> float:
+        mn, mx = float(s.min()), float(s.max())
+        return 0.0 if mx == mn else (float(v) - mn) / (mx - mn)
+
+    def _normalizar_disponibilidade(self, v: Any, strict: bool = True) -> str:
+        s = str(v).strip().lower()
+        em = {"1", "true", "sim", "yes", "em_estoque", "em estoque",
+              "in stock", "available", "disponivel", "disponível"}
+        fora = {"0", "false", "nao", "não", "no", "fora_de_estoque", "fora de estoque",
+                "out of stock", "unavailable", "indisponivel", "indisponível"}
+        if s in em:
+            return "em_estoque"
+        if s in fora:
+            return "fora_de_estoque"
+        if not strict:
+            return s
+        raise ValueError(f"Valor de disponibilidade não reconhecido: {v}")
 
     def _carregar_dados(self) -> None:
-        """Carrega dados do CSV"""
-        try:
-            if not os.path.exists(self.csv_path):
-                logger.error(f"❌ Arquivo {self.csv_path} não encontrado")
-                raise FileNotFoundError(f"CSV não encontrado: {self.csv_path}")
+        if not os.path.exists(self.csv_path):
+            logger.error(f"❌ CSV não encontrado: {self.csv_path}")
+            raise FileNotFoundError(f"CSV não encontrado: {self.csv_path}")
 
-            self.df = pd.read_csv(self.csv_path)
-            logger.info(
-                f"✅ {len(self.df)} registros carregados de {self.csv_path}")
+        df = pd.read_csv(self.csv_path)
+        esperadas = {"id", "titulo", "preco",
+                     "rating", "disponibilidade", "categoria"}
+        if not esperadas.issubset(df.columns):
+            raise ValueError(f"Colunas faltando. Esperadas: {esperadas}")
 
-            # Validar colunas
-            colunas_esperadas = {"id", "titulo", "preco",
-                                 "rating", "disponibilidade", "categoria"}
-            if not colunas_esperadas.issubset(self.df.columns):
-                raise ValueError(
-                    f"Colunas faltando. Esperadas: {colunas_esperadas}")
-
-            # Limpar dados
-            self.df["preco"] = pd.to_numeric(self.df["preco"], errors="coerce")
-            self.df["rating"] = pd.to_numeric(
-                self.df["rating"], errors="coerce")
-            self.df = self.df.dropna(
-                subset=["preco", "rating", "disponibilidade"])
-
-            logger.info(f"✅ Dados limpos. {len(self.df)} registros válidos")
-
-        except Exception as e:
-            logger.error(f"❌ Erro ao carregar dados: {e}")
-            raise
+        df["preco"] = pd.to_numeric(df["preco"], errors="coerce")
+        df["rating"] = pd.to_numeric(df["rating"], errors="coerce")
+        df = df.dropna(subset=["preco", "rating",
+                       "disponibilidade", "categoria"])
+        df["disponibilidade"] = df["disponibilidade"].apply(
+            lambda x: self._normalizar_disponibilidade(x, strict=False))
+        self.df = df
+        logger.info(
+            f"✅ {len(self.df)} registros carregados de {self.csv_path}")
 
     def _inicializar_encoders(self) -> None:
-        """Inicializa label encoders para variáveis categóricas"""
+        cats = list(self.df["categoria"].astype(str).unique())
+        if "Default" not in cats:
+            cats.append("Default")
+
+        le_cat = LabelEncoder()
+        le_cat.fit(cats)
+
+        le_disp = LabelEncoder()
+        le_disp.fit(["fora_de_estoque", "em_estoque"])  # 0=fora, 1=em
+
+        self.label_encoders = {"categoria": le_cat, "disponibilidade": le_disp}
+
+    def _encode_categoria(self, categoria: Any) -> int:
+        cat = str(categoria)
+        le = self.label_encoders["categoria"]
+        if cat in le.classes_:
+            return int(le.transform([cat])[0])
+        if self.allow_default_fallback:
+            return int(le.transform(["Default"])[0])
+        raise ValueError(f"Categoria inválida: {categoria}")
+
+    def _inicializar_encoders(self) -> None:
+        cats = list(self.df["categoria"].astype(str).unique())
+        if "Default" not in cats:
+            cats.append("Default")
+
+        le_cat = LabelEncoder()
+        le_cat.fit(cats)
+
+        le_disp = LabelEncoder()
+        le_disp.fit(["fora_de_estoque", "em_estoque"])  # 0=fora, 1=em
+
+        self.label_encoders = {"categoria": le_cat, "disponibilidade": le_disp}
+
+    def _encode_categoria(self, categoria: Any) -> int:
+        cat = str(categoria)
+        le = self.label_encoders["categoria"]
+        if cat in le.classes_:
+            return int(le.transform([cat])[0])
+        if self.allow_default_fallback:
+            return int(le.transform(["Default"])[0])
+        raise ValueError(f"Categoria inválida: {categoria}")
+
+    def _feature_dict(self, row: pd.Series, normalizar: bool) -> Dict[str, Any]:
+        preco = float(row["preco"])
+        rating = float(row["rating"])
+        preco_n = self._minmax(
+            preco, self.df["preco"]) if normalizar else preco
+        rating_n = self._minmax(
+            rating, self.df["rating"]) if normalizar else rating
+        cat_e = self._encode_categoria(row["categoria"])
+        disp = self._normalizar_disponibilidade(
+            row["disponibilidade"], strict=False)
+        if disp not in ("em_estoque", "fora_de_estoque"):
+            disp = "fora_de_estoque"
+        disp_e = int(
+            self.label_encoders["disponibilidade"].transform([disp])[0])
+        fv = [float(preco_n), float(rating_n), float(cat_e), float(disp_e)]
+        return {"livro_id": int(row["id"]),
+                "titulo": str(row["titulo"]),
+                "preco_normalizado": float(preco_n),
+                "rating_normalizado": float(rating_n),
+                "categoria_encoded": int(cat_e),
+                "disponibilidade_encoded": int(disp_e),
+                "features_vetor": fv}
+
+    def extrair_features(self, livro_id: Optional[int] = None, limite: int = 100, normalizar: bool = True) -> List[Dict[str, Any]]:
+        dados = self.df[self.df["id"] == livro_id] if livro_id else self.df
+        dados = dados.head(limite)
+        if dados.empty:
+            return []
+        return [self._feature_dict(row, normalizar) for _, row in dados.iterrows()]
+
+    def obter_training_data(self, limite: Optional[int] = None, test_size: float = 0.2) -> Dict[str, Any]:
+        dados = self.df.head(limite) if limite else self.df
+        if dados.empty:
+            raise ValueError("Nenhum dado disponível para treinamento")
+
+        disp_norm = dados["disponibilidade"].apply(
+            lambda v: self._normalizar_disponibilidade(v, strict=True))
+        y = np.array(
+            [1 if d == "em_estoque" else 0 for d in disp_norm.tolist()], dtype=int)
+        cat = dados["categoria"].apply(
+            self._encode_categoria).to_numpy(dtype=int)
+        X = np.column_stack([dados["preco"].astype(
+            float).to_numpy(), dados["rating"].astype(float).to_numpy(), cat])
+
+        strat = y if np.unique(y).size > 1 else None
+        Xtr, Xte, ytr, yte = train_test_split(
+            X, y, test_size=test_size, random_state=42, stratify=strat)
+
+        le_cat = self.label_encoders["categoria"]
+        le_disp = self.label_encoders["disponibilidade"]
+        return {"total_registros": int(len(dados)),
+                "features": X.tolist(),
+                "targets": y.tolist(),
+                "features_train": Xtr.tolist(),
+                "targets_train": ytr.tolist(),
+                "features_test": Xte.tolist(),
+                "targets_test": yte.tolist(),
+                "feature_names": ["preco", "rating", "categoria_encoded"], "target_name": "disponibilidade", "train_test_split": float(1 - test_size),
+                "categorias_mapping": {int(i): str(c) for i, c in enumerate(le_cat.classes_)},
+                "disponibilidade_mapping": {int(i): str(c) for i, c in enumerate(le_disp.classes_)}}
+
+    def treinar_modelo(self, modelo_classe, modelo_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        from datetime import datetime, timezone
+        from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+        modelo_params = modelo_params or {}
+
+        data = self.obter_training_data(limite=None, test_size=0.2)
+        X = np.array(data["features"], dtype=float)
+        y = np.array(data["targets"], dtype=int)
+
+        stratify = y if np.unique(y).size >= 2 else None
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=stratify
+        )
+
+        self.scaler = StandardScaler()
+        X_train_s = self.scaler.fit_transform(X_train)
+        X_test_s = self.scaler.transform(X_test)
+
+        self.model = modelo_classe(**modelo_params)
+        self.model.fit(X_train_s, y_train)
+
+        y_pred = self.model.predict(X_test_s)
+
+        metricas = {
+            "versao": str(self.modelo_versao),
+            "acuracia": float(accuracy_score(y_test, y_pred)),
+            "precisao": float(precision_score(y_test, y_pred, zero_division=0)),
+            "recall": float(recall_score(y_test, y_pred, zero_division=0)),
+            "f1_score": float(f1_score(y_test, y_pred, zero_division=0)),
+            "data_treinamento": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "dados_usados": int(len(X)),
+        }
+
+        # ✅ Salva automaticamente nos paths padrão configurados no __init__
+        self.salvar_modelo(str(self.modelo_path), str(self.scaler_path))
+
+        return metricas
+
+    def salvar_modelo(self, modelo_path: str, scaler_path: str) -> None:
+        if self.model is None or self.scaler is None:
+            raise ValueError("Modelo e/ou scaler não disponíveis para salvar.")
+
+        self.modelo_path = Path(modelo_path)
+        self.scaler_path = Path(scaler_path)
+        self.modelo_path.parent.mkdir(parents=True, exist_ok=True)
+        self.scaler_path.parent.mkdir(parents=True, exist_ok=True)
+
+        joblib.dump(self.model, self.modelo_path)
+        joblib.dump(self.scaler, self.scaler_path)
+
+    def carregar_modelo(self) -> bool:
         try:
-            # Encoder para categoria
-            self.label_encoders["categoria"] = LabelEncoder()
-            self.label_encoders["categoria"].fit(self.df["categoria"].unique())
-
-            # Encoder para disponibilidade (target)
-            self.label_encoders["disponibilidade"] = LabelEncoder()
-            self.label_encoders["disponibilidade"].fit(
-                self.df["disponibilidade"].unique())
-
-            logger.info("✅ Encoders inicializados")
-
-        except Exception as e:
-            logger.error(f"❌ Erro ao inicializar encoders: {e}")
-            raise
-
-    def carregar_modelo(self):
-        """Carrega modelo e scaler do arquivo"""
-        try:
-            # Verificar se arquivo existe
-            if not self.modelo_path.exists():
-                logger.warning(
-                    f"📁 Caminho esperado: {self.modelo_path.absolute()}")
-                raise FileNotFoundError(
-                    f"Modelo não encontrado em {self.modelo_path}"
-                )
-
-            # Carregar modelo
-            logger.info(f"📂 Carregando modelo de {self.modelo_path}...")
+            if not self.modelo_path.exists() or not self.scaler_path.exists():
+                return False
             self.model = joblib.load(self.modelo_path)
-
-            # Carregar scaler (normalização)
-            if self.scaler_path.exists():
-                logger.info(f"📂 Carregando scaler de {self.scaler_path}...")
-                self.scaler = joblib.load(self.scaler_path)
-
-            logger.info("✅ Modelo carregado com sucesso!")
+            self.scaler = joblib.load(self.scaler_path)
             return True
-
-        except FileNotFoundError as e:
-            logger.error(f"❌ {e}")
-            return False
         except Exception as e:
             logger.error(f"❌ Erro ao carregar modelo: {e}")
             return False
 
-    def _normalizar_preco(self, preco: float) -> float:
-        """Normaliza preço (0-1)"""
-        min_preco = self.df["preco"].min()
-        max_preco = self.df["preco"].max()
-        return (preco - min_preco) / (max_preco - min_preco)
-
-    def _normalizar_rating(self, rating: float) -> float:
-        """Normaliza rating (0-1)"""
-        return rating / 5.0  # Rating é 0-5
-
-    def extrair_features(
-        self,
-        livro_id: Optional[int] = None,
-        limite: int = 100,
-        normalizar: bool = True
-    ) -> List[Dict[str, Any]]:
-        """
-        Extrai features formatadas para ML.
-
-        Args:
-            livro_id: ID específico (opcional)
-            limite: Quantidade máxima de registros
-            normalizar: Se deve normalizar os dados
-
-        Returns:
-            Lista de features formatadas
-        """
-        try:
-            logger.info(
-                f"📊 Extraindo features (limite={limite}, normalizar={normalizar})")
-
-            # Filtrar dados
-            if livro_id:
-                dados = self.df[self.df["id"] == livro_id].head(limite)
-            else:
-                dados = self.df.head(limite)
-
-            if dados.empty:
-                logger.warning(f"⚠️ Nenhum dado encontrado")
-                return []
-
-            features_list = []
-
-            for row in dados.iterrows():
-                # Normalizar preço e rating
-                preco_norm = self._normalizar_preco(
-                    row["preco"]) if normalizar else row["preco"]
-                rating_norm = self._normalizar_rating(
-                    row["rating"]) if normalizar else row["rating"]
-
-                # Encode categoria
-                categoria_encoded = int(
-                    self.label_encoders["categoria"].transform([row["categoria"]])[0])
-
-                # Disponibilidade (1 = disponível, 0 = não disponível)
-                disponibilidade_encoded = int(
-                    self.label_encoders["disponibilidade"].transform(
-                        [row["disponibilidade"]])[0]
-                )
-
-                # Montar vetor de features
-                features_vetor = [
-                    float(preco_norm),
-                    float(rating_norm),
-                    float(categoria_encoded),
-                    float(disponibilidade_encoded)
-                ]
-
-                feature_dict = {
-                    "livro_id": int(row["id"]),
-                    "titulo": str(row["titulo"]),
-                    "preco_normalizado": float(preco_norm),
-                    "rating_normalizado": float(rating_norm),
-                    "categoria_encoded": categoria_encoded,
-                    "disponibilidade_encoded": disponibilidade_encoded,
-                    "features_vetor": features_vetor
-                }
-
-                features_list.append(feature_dict)
-
-            logger.info(f"✅ {len(features_list)} features extraídas")
-            return features_list
-
-        except Exception as e:
-            logger.error(f"❌ Erro ao extrair features: {e}")
-            raise
-
-    def obter_training_data(
-        self,
-        limite: Optional[int] = None,
-        test_size: float = 0.2
-    ) -> Dict[str, Any]:
-        """
-        Retorna dataset formatado para treinamento.
-
-        Args:
-            limite: Quantidade máxima de registros
-            test_size: Proporção para teste (0.2 = 80/20)
-
-        Returns:
-            Dict com features, targets e metadados
-        """
-        try:
-            logger.info(
-                f"📊 Preparando dados para treinamento (test_size={test_size})")
-
-            # Usar limite se especificado
-            dados = self.df.head(limite) if limite else self.df
-
-            if dados.empty:
-                raise ValueError("Nenhum dado disponível para treinamento")
-
-            # Features
-            X = []
-            y = []
-
-            for idx, row in dados.iterrows():
-                # Features normalizadas
-                preco_norm = self._normalizar_preco(row["preco"])
-                rating_norm = self._normalizar_rating(row["rating"])
-                categoria_encoded = int(
-                    self.label_encoders["categoria"].transform([row["categoria"]])[0])
-
-                features = [preco_norm, rating_norm, categoria_encoded]
-                X.append(features)
-
-                # Target: disponibilidade
-                target = int(self.label_encoders["disponibilidade"].transform(
-                    [row["disponibilidade"]])[0])
-                y.append(target)
-
-            # Converter para numpy
-            X = np.array(X)
-            y = np.array(y)
-
-            # Dividir treino/teste
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=test_size, random_state=42
-            )
-
-            resultado = {
-                "total_registros": len(dados),
-                "features": X.tolist(),
-                "targets": y.tolist(),
-                "features_train": X_train.tolist(),
-                "targets_train": y_train.tolist(),
-                "features_test": X_test.tolist(),
-                "targets_test": y_test.tolist(),
-                "feature_names": ["preco_normalizado", "rating_normalizado", "categoria_encoded"],
-                "target_name": "disponibilidade",
-                "train_test_split": 1 - test_size,
-                "categorias_mapping": {
-                    int(i): cat for i, cat in enumerate(
-                        self.label_encoders["categoria"].classes_
-                    )
-                },
-                "disponibilidade_mapping": {
-                    int(i): disp for i, disp in enumerate(
-                        self.label_encoders["disponibilidade"].classes_
-                    )
-                }
-            }
-
-            logger.info(
-                f"✅ Dataset preparado: {len(X_train)} train, {len(X_test)} test")
-            return resultado
-
-        except Exception as e:
-            logger.error(f"❌ Erro ao preparar dados: {e}")
-            raise
-
-    def _encontrar_arquivo(self, caminho: str) -> Optional[str]:
-        """
-        Procura pelo arquivo em múltiplos locais
-
-        Args:
-            caminho: Caminho original do arquivo
-
-        Returns:
-            str: Caminho válido se encontrado, None caso contrário
-        """
-        caminho = str(caminho)
-        # 1️⃣ Verificar caminho exato
-        if Path(caminho).exists():
-            logger.debug(f"✅ Arquivo encontrado no caminho exato: {caminho}")
-            return caminho
-
-        # 2️⃣ Verificar caminho relativo a partir do diretório atual
-        caminho_relativo = Path.cwd() / caminho
-        if caminho_relativo.exists():
-            logger.debug(
-                f"✅ Arquivo encontrado em diretório relativo: {caminho_relativo}")
-            return str(caminho_relativo)
-
-        # 3️⃣ Verificar apenas o nome do arquivo em diretórios comuns
-        nome_arquivo = Path(caminho).name
-        diretorios_busca = [
-            Path.cwd(),
-            Path.cwd() / "models",
-            Path.cwd() / "data",
-            Path.home() / "models",
-        ]
-
-        for diretorio in diretorios_busca:
-            caminho_candidato = diretorio / nome_arquivo
-            if caminho_candidato.exists():
-                logger.debug(f"✅ Arquivo encontrado em: {caminho_candidato}")
-                return str(caminho_candidato)
-
-        # 4️⃣ Listar o que foi procurado
-        logger.error(f"❌ Arquivo não encontrado: {caminho}")
-        logger.error(f"📂 Diretório atual: {Path.cwd()}")
-        logger.error(
-            f"📁 Arquivos procurados em: {[str(d) for d in diretorios_busca]}")
-
-        # Listar arquivos .pkl disponíveis
-        arquivos_pkl = list(Path.cwd().glob("**/*.pkl"))
-        if arquivos_pkl:
-            logger.error(f"📦 Arquivos .pkl encontrados no sistema:")
-            for pkl in arquivos_pkl[:5]:  # Mostra até 5
-                logger.error(f"   - {pkl}")
-        else:
-            logger.error(f"❌ Nenhum arquivo .pkl encontrado no diretório!")
-
-        return None
-
-    def _carregar_arquivos(self):
-        """Carrega o scaler e o modelo dos arquivos .pkl"""
-        try:
-            # Carregar scaler
-            if self.scaler_path:
-                caminho_scaler = self._encontrar_arquivo(self.scaler_path)
-                if caminho_scaler:
-                    with open(caminho_scaler, 'rb') as arquivo_scaler:
-                        self.scaler = pickle.load(arquivo_scaler)
-                    logger.info(f"✅ Scaler carregado com sucesso")
-                else:
-                    logger.warning(
-                        f"⚠️ Scaler não encontrado. Prosseguindo sem normalização")
-
-            # Carregar modelo
-            caminho_modelo = self._encontrar_arquivo(self.modelo_path)
-            if caminho_modelo:
-                with open(caminho_modelo, 'rb') as arquivo_modelo:
-                    self.modelo = pickle.load(arquivo_modelo)
-                logger.info(f"✅ Modelo carregado com sucesso")
-            else:
-                raise FileNotFoundError(
-                    f"Modelo não encontrado em: {self.modelo_path}\n"
-                    f"Verifique se o arquivo existe no diretório correto"
-                )
-
-        except pickle.UnpicklingError as e:
-            logger.error(f"❌ Erro ao desserializar arquivo: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"❌ Erro ao carregar arquivos: {e}")
-            raise
-
-    def _preparar_features(self, preco: float, rating: float, categoria: str) -> List[float]:
-        """
-        Converte entrada em features numéricas com validação e encoding
-
-        Args:
-            preco: Preço do livro (float)
-            rating: Avaliação do livro (float, 0-5)
-            categoria: Categoria do livro (str)
-
-        Returns:
-            list: Array com 3 features numéricas
-
-        Raises:
-            ValueError: Se valores estão fora do intervalo esperado
-        """
-        # ✅ VALIDAÇÃO 1: Preço válido?
+    def _preparar_features(self, preco: float, rating: float, categoria: str) -> np.ndarray:
         if not isinstance(preco, (int, float)) or preco < 0:
-            raise ValueError(
-                f"❌ Preço inválido: {preco}. Deve ser número positivo")
-
-        # ✅ VALIDAÇÃO 2: Rating válido?
+            raise ValueError(f"Preço inválido: {preco}")
         if not isinstance(rating, (int, float)) or not (0 <= rating <= 5):
-            raise ValueError(
-                f"❌ Rating inválido: {rating}. Deve estar entre 0 e 5")
+            raise ValueError(f"Rating inválido: {rating}")
+        cat_e = self._encode_categoria(categoria)
+        return np.array([[float(preco), float(rating), float(cat_e)]], dtype=float)
 
-        # ✅ VALIDAÇÃO 3: Categoria existe no mapa?
-        if categoria not in self.categoria_map:
-            categorias_validas = list(self.categoria_map.keys())
-            raise ValueError(
-                f"❌ Categoria '{categoria}' inválida. "
-                f"Categorias válidas: {categorias_validas}")
+    def _validar_entrada(self, preco: Any, rating: Any) -> None:
+        if not isinstance(preco, (int, float)) or float(preco) < 0:
+            raise ValueError(f"❌ Preço inválido: {preco}")
 
-        # ✅ ENCODE: Transformar categoria em número usando LabelEncoder
-        categoria_encoded = self.label_encoders["categoria"].transform([categoria])[
-            0]
-
-        logger.debug(
-            f"📊 Features preparadas: preco={preco}, rating={rating}, "
-            f"categoria='{categoria}' (encoded={categoria_encoded})")
-
-        return [preco, rating, categoria_encoded]
+        if not isinstance(rating, (int, float)) or not (0 <= float(rating) <= 5):
+            raise ValueError(f"❌ Rating inválido: {rating}")
 
     def realizar_predicao(self, preco: float, rating: float, categoria: str) -> Dict[str, Any]:
-        """
-        Realiza predição com o modelo carregado
-
-        Args:
-            preco: Preço do livro em reais (float)
-            rating: Avaliação do livro de 0 a 5 (float)
-            categoria: Categoria do livro (str)
-
-        Returns:
-            dict: Dicionário contendo:
-                - predicao: Valor numérico da predição (0 ou 1)
-                - confianca: Confiança da predição (0-1)
-                - classe: Classe predita (em_estoque ou fora_de_estoque)
-                - detalhes: Detalhes adicionais da predição
-
-        Raises:
-            ValueError: Se modelo não está carregado ou parametros inválidos
-
-        Example:
-            >>> preditor = PreditorLivros(...)
-            >>> resultado = preditor.realizar_predicao(29.90, 4.5, "ficção")
-            >>> print(resultado["classe"])
-            'em_estoque'
-        """
-        self._carregar_arquivos()
-
-        # ✅ VALIDAÇÃO: Modelo carregado?
-        if self.modelo is None:
+        if self.model is None:
             raise ValueError(
-                "❌ Modelo não carregado. Verifique o arquivo modelo.pkl")
+                "Modelo não carregado. Execute /train ou carregar_modelo().")
 
-        try:
-            # Preparar features com validação e encoding
-            features = self._preparar_features(preco, rating, categoria)
+        t0 = time.time()
 
-            # Aplicar normalização se disponível
-            if self.scaler is not None:
-                features_normalizadas = self.scaler.transform([features])
-                logger.debug("✅ Features normalizadas com scaler")
+        self._validar_entrada(preco, rating)
+
+        cat_enc = self._encode_categoria(categoria)
+        X = np.array(
+            [[float(preco), float(rating), float(cat_enc)]], dtype=float)
+        Xs = self.scaler.transform(X)
+
+        pred_int = int(self.model.predict(Xs)[0])
+        classe = "em_estoque" if pred_int == 1 else "fora_de_estoque"
+
+        prob = 1.0
+        if hasattr(self.model, "predict_proba"):
+            probas = self.model.predict_proba(Xs)[0]
+            classes = list(getattr(self.model, "classes_", [0, 1]))
+            if pred_int in classes:
+                prob = float(probas[classes.index(pred_int)])
             else:
-                logger.warning(
-                    "⚠️ Scaler não disponível. Usando features sem normalização")
-                features_normalizadas = [features]
+                prob = float(np.max(probas))
 
-            # Fazer predição
-            predicao_numerica = self.modelo.predict(features_normalizadas)[0]
-            confianca = float(self.modelo.predict_proba(
-                features_normalizadas)[0].max())
+        tempo_ms = float((time.time() - t0) * 1000.0)
 
-            # Obter probabilidades para ambas as classes
-            probabilidades = self.modelo.predict_proba(
-                features_normalizadas)[0]
+        return {
+            "livro_id": None,
+            "predicao": float(pred_int),
+            "probabilidade": float(prob),
+            "confianca": float(prob),
+            "classe": classe,
+            "modelo_versao": str(self.modelo_versao),
+            "tempo_processamento_ms": tempo_ms,
+        }
 
-            # Mapear para classe legível
-            classe = "em_estoque" if predicao_numerica == 1 else "fora_de_estoque"
-
-            logger.info(
-                f"📈 Predição realizada com sucesso: "
-                f"classe={classe}, confiança={confianca:.2%}")
-
-            return {
-                "predicao": int(predicao_numerica),
-                "confianca": round(confianca, 4),
-                "classe": classe,
-                "detalhes": {
-                    "preco": preco,
-                    "rating": rating,
-                    "categoria": categoria,
-                    "probabilidade_fora_estoque": round(float(probabilidades[0]), 4),
-                    "probabilidade_em_estoque": round(float(probabilidades[1]), 4)
-                }
-            }
-
-        except ValueError as e:
-            logger.error(f"❌ Erro de validação: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"❌ Erro ao realizar predição: {e}")
-            raise
+    def fazer_predicoes_batch(self, livros: List[Any]) -> Dict[str, Any]:
+        if self.model is None:
+            raise ValueError(
+                "Modelo não carregado. Execute /train ou carregar_modelo().")
+        t0 = time.time()
+        predicoes = []
+        for idx, l in enumerate(livros):
+            preco = l.preco if hasattr(l, "preco") else l.get("preco")
+            rating = l.rating if hasattr(l, "rating") else l.get("rating")
+            categoria = l.categoria if hasattr(
+                l, "categoria") else l.get("categoria")
+            r = self.realizar_predicao(
+                float(preco), float(rating), str(categoria))
+            predicoes.append({"livro_index": idx, "predicao": int(
+                r["predicao"]), "confianca": float(r["confianca"]), "classe": r["classe"]})
+        return {"total_predicoes": len(predicoes), "predicoes": predicoes, "tempo_total_ms": (time.time()-t0)*1000, "sucesso": True}
 
 
-ml_service = None
+ml_service: Optional[MLService] = None
 
 
 def get_ml_service() -> MLService:
-    """Retorna instância do serviço (singleton)"""
     global ml_service
     if ml_service is None:
         ml_service = MLService()
