@@ -297,13 +297,13 @@ async def fazer_predicoes_batch(
     "/train",
     response_model=MetricasModeloSchema,
     summary="Treinar Modelo",
-    description="Treina novo modelo com dados atualizados"
+    description="Treina novo modelo com dados atualizados utilizando RandomForestClassifier"
 )
 async def treinar_modelo(
     current_user: TokenData = Depends(verifica_token)
 ):
     """
-    Treina um novo modelo com os dados atuais.
+    Treina um novo modelo com os dados atuais utilizando RandomForestClassifier.
 
     **Exemplo de uso:**
     ```python

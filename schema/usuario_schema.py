@@ -3,7 +3,7 @@ from pydantic import BaseModel, EmailStr
 
 
 class UsuarioSchemaBase(BaseModel):
-    id: Optional[int] = None
+    # id: Optional[int] = None
     nome: str
     sobrenome: str
     email: EmailStr
@@ -13,6 +13,10 @@ class UsuarioSchemaBase(BaseModel):
         from_attributes = True
     # "Permita que eu converta objetos de banco de dados
     #  para este schema Pydantic automaticamente"
+
+
+class UsuarioSchemaListagem(UsuarioSchemaBase):
+    id: int
 
 
 class UsuarioSchemaCreate(UsuarioSchemaBase):

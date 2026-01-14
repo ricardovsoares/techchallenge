@@ -6,7 +6,8 @@ import logging
 from functools import lru_cache
 from utils.configs import settings
 
-from models.livros_model import Book, Category, HealthStatus, Statistics
+# from models.livros_model import Book, Category, HealthStatus, Statistics
+from schema.livros_schema import Book, Category, HealthStatus, Statistics
 
 from utils.logger import configura_logger
 
@@ -42,7 +43,7 @@ def load_books_data():
 try:
     load_books_data()
 except RuntimeError:
-    logger.critical(
+    logger.warning(
         "O aplicativo não pode ser iniciado sem os dados do livro.")
 
 
@@ -237,7 +238,14 @@ async def search_books(
                            "description": "Lista de categorias retornada com sucesso",
                            "content": {
                                "application/json": {
-                                   "example": ["Estratégia", "Literatura Infantil", "Distopia", "Clássico", "História", "Programação", "Fantasia"]
+                                   "example": [
+                                       {"name": "Poetry"},
+                                       {"name": "Historical Fiction"},
+                                       {"name": "Fiction"},
+                                       {"name": "Mystery"},
+                                       {"name": "History"},
+                                       {"name": "Young Adult"},
+                                   ]
                                }
                            }
                        }, 500: {
@@ -266,9 +274,13 @@ async def get_all_categories():
                            "content": {
                                "application/json": {
                                    "example": {
-                                       "total_livros": 10,
-                                       "preco_medio": 39.45,
-                                       "avaliacao_media": 4.61
+                                       "total_livros": 1000,
+                                       "total_categorias": 15,
+                                       "media_precos": 29.03,
+                                       "preco_minimo": 5,
+                                       "preco_maximo": 39.99,
+                                       "media_avaliacoes": 3.57,
+                                       "distribuicao_das_categorias": "..."
                                    }
                                }
                            }

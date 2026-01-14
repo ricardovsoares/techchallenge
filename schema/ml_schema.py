@@ -97,10 +97,10 @@ class BatchPredictionRequestSchema(BaseModel):
     """Request do endpoint /predictions/batch."""
     livros: List[PredictionRequestSchema] = Field(
         ..., min_items=1, max_items=100)
-    modo_resposta: Literal["completo", "resumido"] = Field(
-        default="resumido",
-        description="No MLService atual o batch retorna resumido (índice/predição/confiança/classe).",
-    )
+    # modo_resposta: Literal["completo", "resumido"] = Field(
+    #     default="resumido",
+    #     description="No MLService atual o batch retorna resumido (índice/predição/confiança/classe)."
+    # )
 
 
 class PredictionItemSchema(BaseModel):

@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.future import select
 
 from models.usuario_model import UsuarioModel
-from schema.usuario_schema import UsuarioSchemaBase, UsuarioSchemaCreate, UsuarioSchemaUpdate
+from schema.usuario_schema import UsuarioSchemaBase, UsuarioSchemaCreate, UsuarioSchemaUpdate, UsuarioSchemaListagem
 from utils.deps import get_session, get_usuario_atual
 from utils.security import gerar_hash_senha, verificar_senha
 from utils.auth import criar_token_acesso, autenticar_usuario
@@ -149,7 +149,7 @@ async def post_usuario(usuario: UsuarioSchemaCreate, db: AsyncSession = Depends(
 
 
 # GET Todos os usuários
-@router_usuario.get('/', response_model=List[UsuarioSchemaBase], summary="📋 Listar usuário",
+@router_usuario.get('/', response_model=List[UsuarioSchemaListagem], summary="📋 Listar usuário",
                     description="Recupera todos os usuários registrados no sistema.",
                     tags=["Users"],
                     responses={
@@ -159,18 +159,18 @@ async def post_usuario(usuario: UsuarioSchemaCreate, db: AsyncSession = Depends(
                                 "application/json": {
                                     "example": [
                                         {
-                                            "id": 1,
                                             "nome": "João",
                                             "sobrenome": "Silva",
                                             "email": "joao@example.com",
-                                            "eh_admin": False
+                                            "eh_admin": False,
+                                            "id": 1
                                         },
                                         {
-                                            "id": 2,
                                             "nome": "Maria",
                                             "sobrenome": "Santos",
                                             "email": "maria@example.com",
-                                            "eh_admin": True
+                                            "eh_admin": True,
+                                            "id": 2
                                         }
                                     ]
                                 }
