@@ -4,7 +4,13 @@ Este projeto foi desenvolvido como uma solução para o Tech Challenge do curso 
 A aplicação foi desenvolvida com FastAPI e tem como objetivo coletar dados de livros um site externo (https://books.toscrape.com/), consolidá-los em uma base local em arquivo .csv e disponibilizar esses dados para consulta via API. Todo o projeto está conteinerizado com Docker e foi publicado no Render, facilitando o deploy e a execução em ambiente de produção. Além da camada de crawling e consultas de livros, a aplicação também oferece uma API de cadastro de usuários e autenticação via JWT, com persistência em PostgreSQL. Com isso, é possível controlar acesso às rotas protegidas e manter o gerenciamento de usuários de forma consistente e auditável.
 Por fim também foi desenvolvido uma camada de Machine Learning para treinar o modelo com RandomForestClassifier, realizar predição, predição em batch, exportar dados de treinmento e features para utilização em modelos de machine learning, todas essas rotas necessitam de autenticação JWT.
 
-A documentção de toda as rotas foi desenvolvida com Swagger e está disponível no endereço https://app-l7f4.onrender.com/docs.
+A documentção de toda as rotas foi desenvolvida com Swagger. 
+
+Link da apresentação do projeto: https://drive.google.com/drive/folders/10NLZR6VAp1xJUFE3M6rlHec4U7b0x9NQ?usp=drive_link
+
+Link do GitHub: https://github.com/ricardovsoares/techchallenge
+
+Link da Aplicação: https://app-l7f4.onrender.com/docs.
 
 ## Arquitetura do Projeto
 A aplicação foi desenvolvida em FastAPI
