@@ -8,7 +8,7 @@ class Book(BaseModel):
     id: int = Field(..., description="Identificador")
     titulo: str = Field(..., description="Título")
     preco: float = Field(..., description="Preço")
-    rating: int = Field(..., description="Rating do Livro (1-5)")
+    rating: int = Field(..., description="Avaliação do Livro (1-5)")
     disponibilidade: int = Field(...,
                                  description="Marcação de Estoque")
     categoria: str = Field(..., description="Categoria do Livro")

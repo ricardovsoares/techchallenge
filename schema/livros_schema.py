@@ -5,36 +5,53 @@ from pydantic import BaseModel, Field
 
 class Book(BaseModel):
     """Schema de livro (response_model dos endpoints que retornam livros)."""
-    id: int
-    url: Optional[str] = None
     titulo: str
-    descricao: Optional[str] = None
     preco: float = Field(ge=0, description="Preço do livro")
-    rating: float = Field(ge=0, le=5, description="Avaliação do livro (0-5)")
+    rating: float = Field(
+        ge=0, le=5, description="Avaliação do livro (0-5)")
     disponibilidade: int = Field(
         ge=0, le=1, description="Disponibilidade (0=fora_de_estoque, 1=em_estoque)")
     categoria: str
     imagem: Optional[str] = None
 
-    # Pode existir em exemplos/datasets alternativos, então mantemos opcional
-    autor: Optional[str] = None
-
     class Config:
         from_attributes = True
         json_schema_extra = {
             "example": {
-                "id": 1,
-                "url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html",
                 "titulo": "A Light in the Attic",
-                "descricao": "It's hard to imagine a world without...",
                 "preco": 51.77,
                 "rating": 3,
                 "disponibilidade": 1,
                 "categoria": "Poetry",
                 "imagem": "https://books.toscrape.com/media/cache/2c/da/2cdad67c44b002ae7a0c12dd7787fd30.jpg",
-                "autor": None
             }
         }
+    # id: int
+    # url: Optional[str] = None
+    # titulo: str
+    # descricao: Optional[str] = None
+    # preco: float = Field(ge=0, description="Preço do livro")
+    # rating: float = Field(ge=0, le=5, description="Avaliação do livro (0-5)")
+    # disponibilidade: int = Field(
+    #     ge=0, le=1, description="Disponibilidade (0=fora_de_estoque, 1=em_estoque)")
+    # categoria: str
+    # imagem: Optional[str] = None
+
+    # class Config:
+    #     from_attributes = True
+    #     json_schema_extra = {
+    #         "example": {
+    #             "id": 1,
+    #             "url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html",
+    #             "titulo": "A Light in the Attic",
+    #             "descricao": "It's hard to imagine a world without...",
+    #             "preco": 51.77,
+    #             "rating": 3,
+    #             "disponibilidade": 1,
+    #             "categoria": "Poetry",
+    #             "imagem": "https://books.toscrape.com/media/cache/2c/da/2cdad67c44b002ae7a0c12dd7787fd30.jpg",
+    #         }
+    #     }
 
 
 class Category(BaseModel):

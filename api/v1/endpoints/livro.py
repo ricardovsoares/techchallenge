@@ -84,7 +84,8 @@ async def health_check():
 
 
 @router_livros.get("/", response_model=List[Book], summary="📋 Listar todos os livros",
-                   description="Retorna uma lista de todos os livros disponíveis, com opções de paginação.",
+                   description="Retorna uma lista de todos os livros disponíveis, com opções de paginação.\n\n"
+                   "Disponibilidade (0=fora_de_estoque, 1=em_estoque) ",
                    tags=["Books"],
                    responses={
                        200: {
@@ -92,10 +93,10 @@ async def health_check():
                            "content": {
                                "application/json": {
                                    "example": [
-                                       {"id": 1, "titulo": "A Arte da Guerra", "autor": "Sun Tzu",
-                                        "categoria": "Estratégia", "preco": 25.50, "avaliacao": 4.8},
-                                       {"id": 2, "titulo": "O Pequeno Príncipe", "autor": "Antoine de Saint-Exupéry",
-                                        "categoria": "Literatura Infantil", "preco": 15.00, "avaliacao": 4.9}
+                                       {"titulo": "Soumission", "preco": 25.50, "rating": 4,
+                                        "disponibilidade": 1, "categoria": "Music", "imagem": "https://books.toscrape.com/media/cache/ee/cf/eecfe998905e455df12064dba399c075.jpg"},
+                                       {"titulo": "The Black Mari", "preco": 39.50, "rating": 3,
+                                        "disponibilidade": 1, "categoria": "Default", "imagem": "https://books.toscrape.com/media/cache/a0/7e/a07ed8f1c23f7b4baf7102722680bd30.jpg"}
                                    ]
                                }
                            }
@@ -129,7 +130,8 @@ async def listar_livros(
 
 @router_livros.get("/search", response_model=List[Book],
                    summary="🔍 Buscar livros por título ou categoria",
-                   description="Permite buscar livros utilizando um termo de pesquisa no título ou na categoria.",
+                   description="Permite buscar livros utilizando um termo de pesquisa no título ou na categoria.\n\n"
+                   "Disponibilidade (0=fora_de_estoque, 1=em_estoque) ",
                    tags=["Books"],
                    responses={
                        200: {
@@ -137,10 +139,10 @@ async def listar_livros(
                            "content": {
                                "application/json": {
                                    "example": [
-                                       {"id": 3, "titulo": "1984", "autor": "George Orwell",
-                                        "categoria": "Distopia", "preco": 30.00, "avaliacao": 4.7},
-                                       {"id": 7, "titulo": "A Revolução dos Bichos", "autor": "George Orwell",
-                                        "categoria": "Distopia", "preco": 20.00, "avaliacao": 4.7}
+                                       {"titulo": "Soumission", "preco": 25.50, "rating": 4,
+                                        "disponibilidade": 1, "categoria": "Music", "imagem": "https://books.toscrape.com/media/cache/ee/cf/eecfe998905e455df12064dba399c075.jpg"},
+                                       {"titulo": "The Black Mari", "preco": 39.50, "rating": 3,
+                                        "disponibilidade": 1, "categoria": "Default", "imagem": "https://books.toscrape.com/media/cache/a0/7e/a07ed8f1c23f7b4baf7102722680bd30.jpg"}
                                    ]
                                }
                            }
