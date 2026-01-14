@@ -1,10 +1,19 @@
 # Tech Challenge: Book Scraper & API
-Este projeto implementa um web scraper para o site `books.toscrape.com` e expõe os dados extraídos por meio de uma API RESTful utilizando o FastAPI. Ele foi desenvolvido como uma solução para o Tech Challenge do curso Engenharia de Machine Learning, com foco em aquisição de dados, desenvolvimento de API e boas práticas de engenharia de software.
+Este projeto foi desenvolvido como uma solução para o Tech Challenge do curso Engenharia de Machine Learning, com foco em aquisição de dados, desenvolvimento de API e boas práticas de engenharia de software.
+
+A aplicação foi desenvolvida com FastAPI e tem como objetivo coletar dados de livros um site externo (https://books.toscrape.com/), consolidá-los em uma base local em arquivo .csv e disponibilizar esses dados para consulta via API. Todo o projeto está conteinerizado com Docker e foi publicado no Render, facilitando o deploy e a execução em ambiente de produção. Além da camada de crawling e consultas de livros, a aplicação também oferece uma API de cadastro de usuários e autenticação via JWT, com persistência em PostgreSQL. Com isso, é possível controlar acesso às rotas protegidas e manter o gerenciamento de usuários de forma consistente e auditável.
+Por fim também foi desenvolvido uma camada de Machine Learning para treinar o modelo com RandomForestClassifier, realizar predição, predição em batch, exportar dados de treinmento e features para utilização em modelos de machine learning, todas essas rotas necessitam de autenticação JWT.
+
+A documentção de toda as rotas foi desenvolvida com Swagger e está disponível no endereço https://app-l7f4.onrender.com/docs.
 
 ## Arquitetura do Projeto
+A aplicação foi desenvolvida em FastAPI
+
+![Logo](Diagrama_Arquitetura.jpg)
 
 
-Documentação das APIs
+
+## Documentação das APIs
 
 Este documento descreve as APIs de Livros, Machine Learning (ML), Scraping e Usuários, fornecendo detalhes sobre suas rotas e exemplos de uso.
 
