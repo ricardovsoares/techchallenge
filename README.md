@@ -1,5 +1,7 @@
 # Tech Challenge: Book Scraper & API
-Este projeto implementa um web scraper para o site `books.toscrape.com` e expõe os dados extraídos por meio de uma API RESTful utilizando o FastAPI. Ele foi desenvolvido como uma solução para um Desafio Técnico de Engenharia de Aprendizado de Máquina, com foco em aquisição de dados, desenvolvimento de API e boas práticas de engenharia de software.
+Este projeto implementa um web scraper para o site `books.toscrape.com` e expõe os dados extraídos por meio de uma API RESTful utilizando o FastAPI. Ele foi desenvolvido como uma solução para o Tech Challenge do curso Engenharia de Machine Learning, com foco em aquisição de dados, desenvolvimento de API e boas práticas de engenharia de software.
+
+## Arquitetura do Projeto
 
 
 Documentação das APIs
@@ -7,25 +9,25 @@ Documentação das APIs
 Este documento descreve as APIs de Livros, Machine Learning (ML), Scraping e Usuários, fornecendo detalhes sobre suas rotas e exemplos de uso.
 
 Sumário
-- API Livros
+- [API Livros](#api-livros) 
   - Visão Geral
   - Base URL
   - Autenticação
   - Rotas
   - Exemplos de Chamadas no Browser (fetch)
-- API ML
+- [API ML](#api-ml)
   - Visão Geral
   - Base URL
   - Autenticação
   - Rotas
   - Exemplos de Chamadas no Browser (fetch)
-- API Scraping
+- [API Scraping](#api-scraping)
   - Visão Geral
   - Base URL
   - Autenticação
   - Rotas
   - Exemplos de Chamadas no Browser (fetch)
-- API Usuários
+- [API Usuarios](#api-usuarios)
   - Visão Geral
   - Base URL
   - Autenticação
@@ -511,7 +513,7 @@ Response JSON (Exemplo):
 ```
 ---
 
-## API Usuários
+## API Usuarios
 
 Visão Geral (API Usuários)
 A API de Usuários gerencia o registro, autenticação e informações de usuários. Algumas rotas exigem autenticação JWT ou privilégios de administrador.
